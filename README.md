@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-GPL-blue?style=flat)](LICENSE)
 [![DOI](https://img.shields.io/badge/DOI-replace-blue?style=flat)](https://doi.org/)
 
-Native port of the Fortran 77 code [RADEX](https://personal.sron.nl/~vdtak/radex/index.shtml) (van der Tak et al. [2007, A&A 468, 627](https://www.aanda.org/articles/aa/abs/2007/23/aa6820-06/aa6820-06.html)) to the [Julia](https://julialang.org/) programming language. A Python wrapper is provided using `PyJulia`. Distinguishing features of this implementation include:
+Port of the Fortran 77 code [RADEX](https://personal.sron.nl/~vdtak/radex/index.shtml) (van der Tak et al. [2007, A&A 468, 627](https://www.aanda.org/articles/aa/abs/2007/23/aa6820-06/aa6820-06.html)) to the [Julia](https://julialang.org/) programming language. A Python wrapper is provided using `PyJulia`. Distinguishing features of this implementation include:
 
   * Improved performance (~150x).
   * (*in progress*) Parameter grid evaluation with parallel execution.
