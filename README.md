@@ -7,10 +7,10 @@
 Port of the Fortran 77 code [RADEX](https://personal.sron.nl/~vdtak/radex/index.shtml) (van der Tak et al. [2007, A&A 468, 627](https://www.aanda.org/articles/aa/abs/2007/23/aa6820-06/aa6820-06.html)) to the [Julia](https://julialang.org/) programming language. A Python wrapper is provided using `PyJulia`. Distinguishing features of this implementation include:
 
   * Improved performance (~150x).
-  * (*in progress*) Parameter grid evaluation with parallel execution.
   * User definable escape probability and background radiation field.
   * Test and validation suite.
   * Extensible design.
+  * (*in progress*) Parameter grid evaluation with parallel execution.
 
 For cases where the same input parameters are used, results from Jadex are expected to match RADEX within five significant figures. These differences arise in-part from the use of higher precision mathematical constants and general numerical instability for levels with very small populations.
 
@@ -30,7 +30,7 @@ Please refer to the online https://jadex.readthedocs.io for the [Quickstart]() g
 ## Citing this work
 If you use Jadex in an academic work, we ask that you cite the following references, including the original publication for RADEX (van der Tak et al. 2007):
 
-```latex
+```
 @ARTICLE{2007A&A...468..627V,
        author = {{van der Tak}, F.~F.~S. and {Black}, J.~H. and {Sch{\"o}ier}, F.~L. and {Jansen}, D.~J. and {van Dishoeck}, E.~F.},
         title = "{A computer program for fast non-LTE analysis of interstellar line spectra. With diagnostic plots to interpret observed line intensity ratios}",
@@ -52,7 +52,7 @@ archivePrefix = {arXiv},
 
 If one uses the collision rate files from the [LAMDA](https://home.strw.leidenuniv.nl/~moldata/) database, the following citation should be included in addition to the source references listed on the page for the specie(s) used.
 
-```latex
+```
 @ARTICLE{2005A&A...432..369S,
        author = {{Sch{\"o}ier}, F.~L. and {van der Tak}, F.~F.~S. and {van Dishoeck}, E.~F. and {Black}, J.~H.},
         title = "{An atomic and molecular database for analysis of submillimetre line observations}",
