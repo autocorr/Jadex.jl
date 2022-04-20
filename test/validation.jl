@@ -22,7 +22,7 @@ function run_validation_tests()
         end
         @testset "Execution tests: $name" for name in all_species
             mol = Specie(name, datadir=DATADIR)
-            density = Dict(mol.colliders[1].name => 1e3)
+            density = Dict(mol.colliders[1].name => 1e1)
             rdf = RunDef(mol, density=density)
             @test get_results(rdf) !== nothing
         end
