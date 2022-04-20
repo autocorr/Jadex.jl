@@ -221,7 +221,15 @@ function solve_rate_eq!(xpop, yrate, rhs)
     yrate[end,:] .= one(eltype(yrate))
     # These operations are performed in-place and are equivalent to:
     #   xpop .= yrate \ rhs
-    Q = lu!(yrate, NoPivot())
+    Q = try
+        lu!(yrate, NoPivot())
+    catch e
+        if isa(e, ZeroPivotException)
+            lu!(yrate)
+        else
+            rethrow()
+        end
+    end
     ldiv!(xpop, Q, rhs)
 end
 function solve_rate_eq!(sol::Solution)
