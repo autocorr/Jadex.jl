@@ -37,7 +37,6 @@ function RunDef(
     ) where {F <: AbstractFloat}
     partner_names = [c.name for c in mol.colliders]
     @assert length(density) > 0
-    @assert length(density) == mol.npart
     @assert all(p in partner_names for (p, n) in density)
     totdens = sum(n for (p, n) in density)
     @assert totdens > 0
@@ -49,7 +48,8 @@ function RunDef(
     if bg === nothing  # use CMB blackbody
         bg = blackbody_background(mol)
     end
-    density = Dict(p => F(d) for (p, d) in density)
+    zero_density = Dict{String,F}(c.name => zero(F) for c in mol.colliders)
+    density = merge(zero_density, density)
     crate, ctot = get_collision_rates(mol, density, F(tkin))
     nreduced = count(<(10tkin/FK), mol.levels.eterm)
     if reduced && nreduced == mol.levels.n

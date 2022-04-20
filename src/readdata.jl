@@ -59,7 +59,7 @@ for the `"hco+@xpol.dat"` file would be `"hco+@xpol"`.
 """
 function Specie(name::AbstractString; datadir="data")
     path = joinpath(datadir, "$name.dat")
-    lines = strip.(readlines(path))
+    lines = replace.(strip.(readlines(path)), '\t'=>' ')
     # Parse header
     mname = String(lines[2])
     amass = parse(Float64, lines[4])
@@ -94,6 +94,21 @@ function parse_table(lines, types)
 end
 
 
+function concat_overflow_string_fields(line, ix_last_field)
+    @assert ix_last_field > 1
+    fields = split(line, ' ', keepempty=false)
+    dat_fields = join(fields[1:ix_last_field-1], ' ')
+    str_fields = join(fields[ix_last_field:end], '_')
+    join([dat_fields, str_fields], ' ')
+end
+
+
+function strip_trailing_fields(line, ix_last_field)
+    @assert ix_last_field > 1
+    join(split(line, ' ', keepempty=false)[1:ix_last_field], ' ')
+end
+
+
 """
     parse_energies(lines)
 
@@ -109,6 +124,7 @@ function parse_energies(lines)
     @assert nlev >= 1
     types = [Int, Float64, Float64, String]
     work_lines = lines[8:7+nlev]
+    work_lines = concat_overflow_string_fields.(work_lines, 4)
     df = parse_table(work_lines, types)
     eterm = df.Column2
     gstat = df.Column3
@@ -132,6 +148,7 @@ function parse_transitions(lines, levels::EnergyLevels)
     @assert ntran >= 1
     i_start = levels.n + 11
     work_lines = lines[i_start:i_start+ntran-1]
+    work_lines = strip_trailing_fields.(work_lines, 6)
     types = [Int, Int, Int, Float64, Float64, Float64]
     df = parse_table(work_lines, types)
     iupp = df.Column2
@@ -171,7 +188,7 @@ function parse_colliders(lines, levels, transitions)
     # Instead of counting lines, read lines until reaching the comment
     # "!COLLISIONS BETWEEN", "!Collisions with", etc.
     for (i, line) in enumerate(lines)
-        if occursin(r"^!COLLISIONS"i, line)
+        if occursin(r"^!(\s*COLLISIONS|\s*COLLISION P|\s*PARTNER|.*PARTNER:)"i, line)
             icol += 1
             name = VALID_PARTNERS[parse(Int, lines[i+1][1])]
             ntran = parse(Int, lines[i+3])
