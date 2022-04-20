@@ -17,14 +17,18 @@ DATADIR = ENV["RADEX_DATAPATH"]
 function run_validation_tests()
     all_species = replace.(readdir(DATADIR), ".dat"=>"")
     @testset "Jadex Validation Tests" begin
-        @testset "LAMDA file parsing: $name" for name in all_species
-            @test Specie(name, datadir=DATADIR) !== nothing
+        @testset "LAMDA file parsing" begin
+            @testset "$name" for name in all_species
+                @test Specie(name, datadir=DATADIR) !== nothing
+            end
         end
-        @testset "Execution tests: $name" for name in all_species
-            mol = Specie(name, datadir=DATADIR)
-            density = Dict(mol.colliders[1].name => 1e1)
-            rdf = RunDef(mol, density=density)
-            @test get_results(rdf) !== nothing
+        @testset "Execution tests" begin
+            @testset "$name" for name in all_species
+                mol = Specie(name, datadir=DATADIR)
+                density = Dict(mol.colliders[1].name => 1e1)
+                rdf = RunDef(mol, density=density)
+                @test get_results(rdf) !== nothing
+            end
         end
     end
 end
