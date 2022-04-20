@@ -1,6 +1,6 @@
 module RunDefinition
 
-export RunDef
+export RunDef, thermal_h2_density
 
 using ..Constants: FK
 using ..ReadData: Specie
@@ -139,6 +139,24 @@ function get_collision_rates(mol::Specie, densities::Dict, tkin::Real)
     # Compute total collision rates from all levels to a given level.
     ctot = dropdims(sum(crate, dims=2), dims=2)
     crate, ctot
+end
+
+
+"""
+    thermal_h2_density(density, tkin)
+
+Calculate densities for the ortho (symmetric) and para (anti-symmetric)
+spin-isomers of molecular hydrogen (H2) from a total molecule density. The
+ortho-to-para ratio assumes that the H2 was formed in thermal equillibrium at
+the give kinetic temperature. In the high-temperature limit (> 100 K) the
+ortho-to-para ratio is 3.
+"""
+function thermal_h2_density(density, tkin)
+    ortho_para_ratio = min(3.0, 9.0 * exp(-170.6 / tkin))
+    Dict(
+         "o-h2" => density / (ortho_para_ratio + 1),
+         "p-h2" => density / (1 + 1 / ortho_para_ratio),
+    )
 end
 
 

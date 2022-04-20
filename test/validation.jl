@@ -12,6 +12,7 @@ using PyCall
 using Jadex
 
 DATADIR = ENV["RADEX_DATAPATH"]
+RADEX = pyimport("spectralradex.radex")
 
 
 function run_validation_tests()
