@@ -17,6 +17,8 @@ const THC     = 2 * HPLANCK * CLIGHT
 const TCMB = 2.72548  # +/- 0.00057 K
 
 # Mathematical constants
+# NOTE RADEX uses a truncated FWHM value of 1.0645 which
+#      results in a value for `FGAUSS` of 26.753803007
 const FGAUSS  = √π / (2 * √log(2)) * 8π
 
 const MINITER = 10     # minimum number of iterations

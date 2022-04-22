@@ -8,7 +8,7 @@ using CSV
 using DataFrames
 
 
-const VALID_PARTNERS = ["h2", "p-h2", "o-h2", "e", "h", "he", "h+"]
+const VALID_PARTNERS = ["h2", "p-h2", "o-h2", "e-", "h", "he", "h+"]
 
 
 struct EnergyLevels{F <: AbstractFloat}
