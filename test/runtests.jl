@@ -8,7 +8,7 @@ using Jadex.RunDefinition
 using Jadex.EscapeProbability
 
 
-const TEST_DATA_DIR = "data"
+const TEST_DATA_DIR = joinpath(@__DIR__, "data")
 
 Logging.disable_logging(Logging.Info)
 
