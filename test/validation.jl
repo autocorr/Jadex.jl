@@ -132,8 +132,8 @@ function run_validation_tests()
         @testset "SpectralRadex comparison" begin
             ε = 1e-3
             all_tkin  = [  20,   40,   60,   80,  100]  # K
-            all_dens  = [ 1e2,  1e3,  1e4,  1e5,  1e6]  # cm^-3
-            all_cdmol = [1e10, 1e11, 1e12, 1e13, 1e14]  # cm^-2
+            all_dens  = [ 1e3,  1e4,  1e5,  1e6,  1e7]  # cm^-3
+            all_cdmol = [1e11, 1e12, 1e13, 1e14]        # cm^-2
             test_species = ["13co", "co", "hco+", "hcn", "hnc", "n2hp", "p-nh3"]
             @testset "$name" for name in test_species
                 @testset "$tkin, $dens, $cdmol" for

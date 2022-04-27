@@ -25,7 +25,7 @@ function get_test_data(;reduced=false)
     rdf = RunDef(mol, density=Dict("h2" => 1e4), tkin=20.0, cdmol=1e13,
                  deltav=1.0, escprob=βsphere, bg=bg, reduced=reduced)
     sol = Solution(rdf)
-    mol, bg, sol, rdf
+    mol, bg, rdf, sol
 end
 
 
@@ -78,7 +78,7 @@ end
         # Test first iteration directly against values from RADEX. This is
         # mainly useful for testing that the rate matrix is solved correctly.
         @testset "HCO+ niter=1" begin
-            mol, _, sol, rdf = get_test_data()
+            mol, _, rdf, sol = get_test_data()
             Solver.init_radiative!(sol, rdf)
             Solver.step_collision!(sol, rdf)
             Solver.solve_rate_eq!(sol)
@@ -114,7 +114,7 @@ end
                       1.1284951335437319E-005, 1.1370030871832578E-005,
                       1.1442545495723622E-005, 1.2528900484503935E-005,
                       1.1260799999999999E-005]
-            mol, bg, sol, rdf = get_test_data()
+            mol, bg, rdf, sol = get_test_data()
             @test prettyclose(rdf.crate[1:3,1:3], r_crate)
             @test prettyclose(rdf.ctot, r_ctot)
         end
@@ -136,10 +136,10 @@ end
                       4.7722142804693704E-005,  6.4962868215111186E-006,
                       7.5106624178649448E-007,  5.2938138085011507E-008]
             # Solve full system and compare results to RADEX literals.
-            mol, bg, sol, rdf = get_test_data()
-            niter, converged = solve!(sol, rdf)
+            mol, bg, rdf, sol = get_test_data()
+            converged, _ = solve!(sol, rdf)
             @test converged
-            @test niter == 29
+            @test sol.niter == 21
             slice = 1:length(r_tex)
             @test prettyclose(sol.tex[slice],  r_tex)
             @test prettyclose(sol.xpop[slice], r_xpop)
@@ -163,10 +163,10 @@ end
                       4.7722143271694613E-005,  6.4962871699427997E-006,
                       7.5106650828449555E-007,  5.3148449509563594E-008]
             # Solve reduced level system and compare.
-            mol, bg, sol, rdf = get_test_data(reduced=true)
-            niter, converged = solve!(sol, rdf)
+            mol, bg, rdf, sol = get_test_data(reduced=true)
+            converged, _ = solve!(sol, rdf)
             @test converged
-            @test niter == 29
+            @test sol.niter == 21
             slice = 1:length(r_tex)
             @test prettyclose(sol.tex[slice],  r_tex)
             @test prettyclose(sol.xpop[slice], r_xpop)
@@ -191,8 +191,9 @@ end
                       2.3043927507445803e-8,
                       8.1000449885733543e-9]
             # Solve and compare results
-            mol, bg, sol, rdf = get_test_data()
-            niter, converged = solve!(sol, rdf)
+            mol, bg, rdf, sol = get_test_data()
+            @test get_results(rdf) !== nothing
+            converged, _ = solve!(sol, rdf)
             df = get_results(sol, rdf, freq_max=500)
             @test prettyclose(df.t_rad, r_t_r)
             @test prettyclose(df.flux_kkms, r_kkms)

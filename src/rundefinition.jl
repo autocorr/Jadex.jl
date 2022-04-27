@@ -22,6 +22,7 @@ struct RunDef{F <: AbstractFloat, B <: Function}
     reduced::Bool             # reduce solution to coll. coupled
     nreduced::Int             # reduced number of levels
     minpop::F                 # minimum level population
+    tolerance::F              # tolerance in summed optical depth
 end
 
 function RunDef(
@@ -34,6 +35,7 @@ function RunDef(
         bg::Union{Nothing, BackgroundField{F}}=nothing,
         reduced::Bool=false,
         minpop=1e-20,
+        tolerance=1e-6,
     ) where {F <: AbstractFloat}
     partner_names = [c.name for c in mol.colliders]
     @assert length(density) > 0
@@ -44,6 +46,7 @@ function RunDef(
     @assert cdmol > 0
     @assert deltav > 0
     @assert minpop > 0
+    @assert tolerance > 0
     deltav *= 1e5  # km/s to cm/s
     if bg === nothing  # use CMB blackbody
         bg = blackbody_background(mol)
@@ -57,7 +60,7 @@ function RunDef(
         @warn "All levels are collisionally coupled."
     end
     RunDef(mol, density, F(totdens), F(tkin), F(cdmol), F(deltav), escprob, bg,
-           crate, ctot, reduced, nreduced, F(minpop))
+           crate, ctot, reduced, nreduced, F(minpop), F(tolerance))
 end
 
 

@@ -1,5 +1,4 @@
 module Solver
-# TODO Add helper function for ortho/para H2.
 
 export Solution
 export reset!, solve!, get_results
@@ -22,18 +21,37 @@ const FGAUSS = GAUSS_AREA * 8π          # ~26.753
 #const FGAUSS = 26.753802360251857
 
 
+struct IterationParams
+    min::Int
+    max::Int
+    start::Int
+    pending::Int
+
+    function IterationParams(min, max, start, pending)
+        @assert 0 <= min < max
+        @assert start >= 3
+        @assert pending >= 3
+        new(min, max, start, pending)
+    end
+end
+IterationParams() = IterationParams(5, 10_000, 3, 3)
+
+
 mutable struct Solution{F <: AbstractFloat}
+    iter::IterationParams
+    niter::Int
     nthick::Int
     τsum::F
     rhs::Vector{F}
     yrate::Matrix{F}
     tex::Vector{F}
     xpop::Vector{F}
-    xpop_::Vector{F}
+    xpop_::Matrix{F}
     τl::Vector{F}
 end
 
-function Solution(rdf::RunDef{F,B}) where {F, B}
+function Solution(rdf::RunDef{F,B}, iter::IterationParams) where {F, B}
+    niter = 0
     nthick = 0
     τsum = zero(F)
     mol = rdf.mol
@@ -48,10 +66,11 @@ function Solution(rdf::RunDef{F,B}) where {F, B}
     τl = zeros(F, ntran)
     tex = zeros(F, ntran)
     xpop = zeros(F, nlev)
-    xpop_ = copy(xpop)
+    xpop_ = zeros(F, (nlev, 3))
     # Default constructor for Solution type
-    Solution(nthick, τsum, rhs, yrate, tex, xpop, xpop_, τl)
+    Solution(iter, niter, nthick, τsum, rhs, yrate, tex, xpop, xpop_, τl)
 end
+Solution(rdf::RunDef) = Solution(rdf, IterationParams())
 
 
 function clear_rates!(yrate)
@@ -61,6 +80,7 @@ clear_rates!(sol::Solution) = clear_rates!(sol.yrate)
 
 
 function reset!(sol::Solution)
+    sol.niter = zero(sol.niter)
     sol.nthick = zero(sol.nthick)
     sol.τsum = zero(sol.τsum)
     clear_rates!(sol.yrate)
@@ -79,9 +99,8 @@ function validate(sol::Solution, rdf::RunDef)
     @assert length(sol.tex) == ntran
     @assert length(sol.rhs) == nlev
     @assert length(sol.xpop) == nlev
-    @assert length(sol.xpop_) == nlev
-    @assert size(sol.yrate, 1) == nlev
-    @assert size(sol.yrate, 2) == nlev
+    @assert size(sol.xpop_) == (nlev,    3)
+    @assert size(sol.yrate) == (nlev, nlev)
     return nothing
 end
 
@@ -97,12 +116,13 @@ function init_radiative!(sol::Solution, rdf::RunDef)
     t = rdf.mol.transitions
     yrate = sol.yrate
     @inbounds for (i, m, n) in zip(1:t.n, t.iupp, t.ilow)
+        gmn = l.gstat[m] / l.gstat[n]
         etr = FK * t.xnu[i] / rdf.bg.trj[i]
         exr = etr >= 160.0 ? zero(etr) : (inv ∘ expm1)(etr)
         A = t.aeinst[i]
         yrate[m,m] += A * (1 + exr)
-        yrate[n,n] += A * (l.gstat[m] * exr / l.gstat[n])
-        yrate[m,n] -= A * (l.gstat[m] / l.gstat[n] * exr)
+        yrate[n,n] += A * gmn * exr
+        yrate[m,n] -= A * gmn * exr
         yrate[n,m] -= A * (1 + exr)
     end
     sol
@@ -127,18 +147,26 @@ function step_radiative!(sol::Solution, rdf::RunDef)
     @inbounds for (i, xnu, m, n, A, tb) in zip(
                 1:t.n, t.xnu, t.iupp, t.ilow, t.aeinst, rdf.bg.totalb)
         xt = xnu^3
+        gmn = l.gstat[m] / l.gstat[n]
         # Calculate line optical depth
-        pop_factor = xpop[n] * l.gstat[m] / l.gstat[n] - xpop[m]
+        pop_factor = xpop[n] * gmn - xpop[m]
         τl[i] = cddv * pop_factor / (FGAUSS * xt / A)
         if τl[i] > 1e-2; nthick += 1 end
         # Use escape probability approx for internal intensity
         β   = rdf.escprob(τl[i])
-        Bν  = tb * β
-        exr = Bν / (THC * xt)
+        if sol.niter >= sol.iter.start
+            exr = tb * β / (THC * xt)
+        else
+            hnu = FK * xnu / sol.tex[i]
+            Bex = hnu >= 160.0 ? zero(xnu) : (inv ∘ expm1)(hnu)
+            exr = tb * β / (THC * xt) + (one(xnu) - β) * Bex
+        end
+        #Bν  = tb * β
+        #exr = Bν / (THC * xt)
         # Radiative contribution to the rate matrix
         yrate[m,m] += A * (β + exr)
-        yrate[n,n] += A * (l.gstat[m] * exr / l.gstat[n])
-        yrate[m,n] -= A * (l.gstat[m] / l.gstat[n] * exr)
+        yrate[n,n] += A * gmn * exr
+        yrate[m,n] -= A * gmn * exr
         yrate[n,m] -= A * (β + exr)
     end
     sol.nthick = nthick
@@ -172,7 +200,10 @@ end
 
 
 @inline function store_population!(xpop_, xpop)
-    xpop_ .= xpop
+    xpop_[:, 3] .= @view xpop_[:, 2]
+    xpop_[:, 2] .= @view xpop_[:, 1]
+    xpop_[:, 1] .= xpop
+    xpop_
 end
 @inline function store_population!(sol::Solution)
     store_population!(sol.xpop_, sol.xpop)
@@ -353,33 +384,55 @@ end
 
 
 """
-    relax_population(sol::Solution)
+    ng_accelerate!(sol::Solution)
 
-Apply under-relaxation to population levels using values from previous
-iteration.
+Apply Ng-acceleration to level populations from previous three iterations.  See
+S4.4.7 of "Radiative Transfer in Astrophysics: Theory, Numerical Methods, and
+Applications" lecture note series by C.P. Dullemond which is itself based on
+Olson, Auer, and Buchler (1985).
 """
-function relax_population!(sol::Solution)
-    @. sol.xpop = 0.3 * sol.xpop + 0.7 * sol.xpop_
+function ng_accelerate!(sol::Solution)
+    x1 = sol.xpop
+    x2 = @view sol.xpop_[:, 1]
+    x3 = @view sol.xpop_[:, 2]
+    x4 = @view sol.xpop_[:, 3]
+    q1 = @. x1 - 2x2 + x3
+    q2 = @. x1 -  x2 - x3 + x4
+    q3 = @. x1 -  x2
+    A1 = q1 ⋅ q1
+    A2 = q2 ⋅ q1
+    B1 = A2       # q1 ⋅ q2
+    B2 = q2 ⋅ q2
+    C1 = q1 ⋅ q3
+    C2 = q2 ⋅ q3
+    denom = A1 * B2 - A2 * B1
+    if denom > 0
+        a = (C1 * B2 - C2 * B1) / denom
+        b = (C2 * A1 - C1 * A2) / denom
+        sol.xpop .= @. (1 - a - b) * x1 + a * x2 + b * x3
+    end
     sol
 end
 
 
-function warn_fat_lines(sol::Solution)
-    nfat = count(>(1e5), sol.τl)
+function warn_fat_lines(τl)
+    nfat = count(>(1e5), τl)
     if nfat > 0
         @warn "Extremely optically thick lines found: $nfat"
     end
     nfat
 end
+warn_fat_lines(sol::Solution) = warn_fat_lines(sol.τl)
 
 
-function isconverged(sol::Solution, niter::Integer, miniter::Integer,
-        tolerance::Real)
-    nthick = sol.nthick
-    τsum   = sol.τsum
+function isconverged(niter::Integer, nthick::Integer, τsum::Real,
+        miniter::Integer, tolerance::Real)
     conv_min = niter >= miniter
     conv_sum = nthick == 0 || τsum / nthick < tolerance
     conv_min && conv_sum
+end
+function isconverged(sol::Solution, rdf::RunDef)
+    isconverged(sol.niter, sol.nthick, sol.τsum, sol.iter.min, rdf.tolerance)
 end
 
 
@@ -392,7 +445,6 @@ function first_iteration!(sol::Solution, rdf::RunDef)
     floor_population!(sol, rdf)
     store_population!(sol)
     init_tau_tex!(sol, rdf)
-    relax_population!(sol)
     sol
 end
 
@@ -409,40 +461,43 @@ function iterate_solution!(sol::Solution, rdf::RunDef)
     end
     floor_population!(sol, rdf)
     step_tau_tex!(sol, rdf)
-    relax_population!(sol)
+    # check conditions to accelerate
+    after_start  = sol.niter > sol.iter.start
+    none_pending = (sol.niter - sol.iter.start) % sol.iter.pending == 0
+    if after_start && none_pending
+        ng_accelerate!(sol)
+    end
     sol
 end
 
 
-function solve!(sol::Solution, rdf::RunDef; miniter::Integer=10,
-        maxiter::Integer=10_000, tolerance::Real=1e-6)
-    @assert maxiter > 0
-    @assert maxiter > miniter
-    @assert tolerance > 0
+function solve!(sol::Solution, rdf::RunDef)
     validate(sol, rdf)
+    sol.niter = 0
     first_iteration!(sol, rdf)
-    niter = 1
+    sol.niter = 1
     converged = false
     while !converged
-        if niter >= maxiter
-            @warn "Did not converge in $maxiter iterations."
+        if sol.niter >= sol.iter.max
+            @warn "Did not converge in $(sol.iter.max) iterations."
             break
         end
-        niter += 1
+        sol.niter += 1
         iterate_solution!(sol, rdf)
-        converged = isconverged(sol, niter, miniter, tolerance)
-        niter == 2 && warn_fat_lines(sol)
+        converged = isconverged(sol, rdf)
+        sol.niter == 2 && warn_fat_lines(sol)
     end
     @debug "τl"   sol.τl[1:6]
     @debug "tex"  sol.tex[1:6]
     @debug "xpop" sol.xpop[1:6]
-    niter, converged
+    converged, sol
 end
 
-function solve(rdf::RunDef; kwargs...)
-    sol = Solution(rdf)
-    niter, converged = solve!(sol, rdf; kwargs...)
-    niter, converged, sol
+function solve(rdf::RunDef; iter=nothing)
+    iter = iter isa Nothing ? IterationParams() : iter
+    sol  = Solution(rdf, iter)
+    converged, _ = solve!(sol, rdf)
+    converged, sol
 end
 
 
@@ -538,7 +593,7 @@ function get_results(sol::Solution, rdf::RunDef; freq_min=-Inf,
         copycols=false,
      )
 end
-get_results(rdf::RunDef; kwargs...) = get_results(solve(rdf)[3], rdf; kwargs...)
+get_results(rdf::RunDef; kwargs...) = get_results(solve(rdf)[2], rdf; kwargs...)
 
 
 function run(sol::Solution, rdfs; min_freq=-Inf, max_freq=Inf)
