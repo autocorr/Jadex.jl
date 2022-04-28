@@ -79,15 +79,17 @@ end
 clear_rates!(sol::Solution) = clear_rates!(sol.yrate)
 
 
-function reset!(sol::Solution)
+function reset!(sol::Solution; keep_result=false)
     sol.niter = zero(sol.niter)
     sol.nthick = zero(sol.nthick)
     sol.τsum = zero(sol.τsum)
     clear_rates!(sol.yrate)
-    sol.tex .= zero(eltype(sol.tex))
-    sol.xpop .= zero(eltype(sol.xpop))
     sol.xpop_ .= zero(eltype(sol.xpop_))
-    sol.τl .= zero(eltype(sol.τl))
+    if !keep_result
+        sol.τl .= zero(eltype(sol.τl))
+        sol.tex .= zero(eltype(sol.tex))
+        sol.xpop .= zero(eltype(sol.xpop))
+    end
     sol
 end
 
@@ -466,10 +468,15 @@ function iterate_solution!(sol::Solution, rdf::RunDef)
 end
 
 
-function solve!(sol::Solution, rdf::RunDef)
+function solve!(sol::Solution, rdf::RunDef; reuse_result=false)
     validate(sol, rdf)
-    sol.niter = 1
-    first_iteration!(sol, rdf)
+    if reuse_result
+        reset!(sol, keep_result=true)
+        sol.niter = 1
+    else
+        sol.niter = 1
+        first_iteration!(sol, rdf)
+    end
     converged = false
     while !converged
         if sol.niter >= sol.iter.max

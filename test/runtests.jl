@@ -95,6 +95,7 @@ end
                     -1.0744492622345223E-020,   1.0000000031710769E-026]
             @test sol.xpop[1:10] ≈ r_rhs[1:10]
         end
+
         # Test solution directly against values from RADEX.
         @testset "HCO+ rates" begin
             # Collision rate coefficients from RADEX.
@@ -118,6 +119,7 @@ end
             @test prettyclose(rdf.crate[1:3,1:3], r_crate)
             @test prettyclose(rdf.ctot, r_ctot)
         end
+
         @testset "HCO+ solve" begin
             # Solution results from RADEX using updated FGAUSS
             r_tex  = [4.5051798034847579,       3.7688070695763267,
@@ -145,6 +147,7 @@ end
             @test prettyclose(sol.xpop[slice], r_xpop)
             @test prettyclose(sol.τl[slice],   r_taul)
         end
+
         @testset "HCO+ reduced" begin
             # Solution results from RADEX using reduced=true and patched FGAUSS
             r_tex  = [4.5051798035302424,       3.7688070696279143,
@@ -172,6 +175,7 @@ end
             @test prettyclose(sol.xpop[slice], r_xpop)
             @test prettyclose(sol.τl[slice],   r_taul)
         end
+
         @testset "HCO+ results" begin
             # Solution results from RADEX using patched FGAUSS and GAUSS_AREA
             # for the first five levels (1-0 to 5-4).
@@ -198,6 +202,27 @@ end
             @test prettyclose(df.t_rad, r_t_r)
             @test prettyclose(df.flux_kkms, r_kkms)
             @test prettyclose(df.flux_ergs, r_ergs)
+        end
+
+        @testset "HCO+ result reuse" begin
+            mol, bg, rdf1, sol = get_test_data()
+            rdf2 = RunDef(mol, density=Dict("h2" => 1e4), tkin=21.0,
+                          cdmol=1e13, deltav=1.0, escprob=βsphere, bg=bg)
+            # Reuse solution from definition #1
+            solve!(sol, rdf1)
+            reset!(sol, keep_result=true)
+            solve!(sol, rdf2, reuse_result=true)
+            @test sol.niter == 16
+            τl_reused = copy(sol.τl)
+            tex_reused = copy(sol.tex)
+            xpop_reused = copy(sol.xpop)
+            # Compare re-use to from-scratch solution for definition #2
+            reset!(sol)
+            solve!(sol, rdf2)
+            slice = 1:10
+            @test prettyclose(sol.τl[slice], τl_reused[slice])
+            @test prettyclose(sol.tex[slice], tex_reused[slice])
+            @test prettyclose(sol.xpop[slice], xpop_reused[slice])
         end
     end
 end
