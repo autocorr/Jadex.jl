@@ -29,12 +29,12 @@ struct IterationParams
 
     function IterationParams(min, max, start, pending)
         @assert 0 <= min < max
-        @assert start >= 3
-        @assert pending >= 3
+        @assert start >= 4
+        @assert pending >= 4
         new(min, max, start, pending)
     end
 end
-IterationParams() = IterationParams(5, 10_000, 3, 3)
+IterationParams() = IterationParams(5, 10_000, 4, 4)
 
 
 mutable struct Solution{F <: AbstractFloat}
@@ -152,17 +152,12 @@ function step_radiative!(sol::Solution, rdf::RunDef)
         pop_factor = xpop[n] * gmn - xpop[m]
         τl[i] = cddv * pop_factor / (FGAUSS * xt / A)
         if τl[i] > 1e-2; nthick += 1 end
-        # Use escape probability approx for internal intensity
+        # Use escape probability approximation for internal intensity.
+        # Note that excluding the contribution to the local radiation
+        # field is effectively lambda acceleration for a single-zone
+        # model.
         β   = rdf.escprob(τl[i])
-        if sol.niter >= sol.iter.start
-            exr = tb * β / (THC * xt)
-        else
-            hnu = FK * xnu / sol.tex[i]
-            Bex = hnu >= 160.0 ? zero(xnu) : (inv ∘ expm1)(hnu)
-            exr = tb * β / (THC * xt) + (one(xnu) - β) * Bex
-        end
-        #Bν  = tb * β
-        #exr = Bν / (THC * xt)
+        exr = tb * β / (THC * xt)
         # Radiative contribution to the rate matrix
         yrate[m,m] += A * (β + exr)
         yrate[n,n] += A * gmn * exr
@@ -462,7 +457,7 @@ function iterate_solution!(sol::Solution, rdf::RunDef)
     floor_population!(sol, rdf)
     step_tau_tex!(sol, rdf)
     # check conditions to accelerate
-    after_start  = sol.niter > sol.iter.start
+    after_start  = sol.niter >= sol.iter.start
     none_pending = (sol.niter - sol.iter.start) % sol.iter.pending == 0
     if after_start && none_pending
         ng_accelerate!(sol)
@@ -473,9 +468,8 @@ end
 
 function solve!(sol::Solution, rdf::RunDef)
     validate(sol, rdf)
-    sol.niter = 0
-    first_iteration!(sol, rdf)
     sol.niter = 1
+    first_iteration!(sol, rdf)
     converged = false
     while !converged
         if sol.niter >= sol.iter.max

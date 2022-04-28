@@ -139,7 +139,7 @@ end
             mol, bg, rdf, sol = get_test_data()
             converged, _ = solve!(sol, rdf)
             @test converged
-            @test sol.niter == 21
+            @test sol.niter == 20
             slice = 1:length(r_tex)
             @test prettyclose(sol.tex[slice],  r_tex)
             @test prettyclose(sol.xpop[slice], r_xpop)
@@ -166,7 +166,7 @@ end
             mol, bg, rdf, sol = get_test_data(reduced=true)
             converged, _ = solve!(sol, rdf)
             @test converged
-            @test sol.niter == 21
+            @test sol.niter == 20
             slice = 1:length(r_tex)
             @test prettyclose(sol.tex[slice],  r_tex)
             @test prettyclose(sol.xpop[slice], r_xpop)
