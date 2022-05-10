@@ -1,12 +1,11 @@
-using Documenter
-include(joinpath(@__DIR__, "../src/Jadex.jl"))
+using Documenter, Jadex
 
 makedocs(
     modules = [Jadex],
+    sitename = "Jadex",
     format = Documenter.HTML(
             prettyurls = get(ENV, "CI", nothing) == "true",
     ),
-    sitename = "Jadex",
     pages = [
              "index.md",
              "install.md",
