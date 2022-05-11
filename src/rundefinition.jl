@@ -93,15 +93,15 @@ function get_collision_rates(mol::Specie, densities::Dict, tkin::Real)
         level_iter = enumerate(zip(collider.lcl, collider.lcu))
         # Clip to rates at lowest temperature.
         if tkin <= tmin
-            tkin < tmin && @warn "Kinetic temperature lower than min value \
-                                  for rates, $tkin < $tmin, using nearest."
+            tkin < tmin && @warn ("Kinetic temperature lower than min value " *
+                                  "for rates, $tkin < $tmin, using nearest.")
             for (i, (e_lo, e_hi)) in level_iter
                 colld[e_hi, e_lo] = rates[i, 1]
             end
         # Clip to rates at highest temperature.
         elseif tkin >= tmax
-            tkin > tmax && @warn "Kinetic temperature greater than max value \
-                                  for rates, $tkin > $tmax, using nearest."
+            tkin > tmax && @warn ("Kinetic temperature greater than max value " *
+                                  "for rates, $tkin > $tmax, using nearest.")
             for (i, (e_lo, e_hi)) in level_iter
                 colld[e_hi, e_lo] = rates[i, end]
             end

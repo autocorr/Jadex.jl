@@ -4,11 +4,11 @@ Author = "Brian Svoboda"
 
 # Jadex
 
-High-performance and extensible re-implementation of the Fortran 77 code [RADEX](https://personal.sron.nl/~vdtak/radex/index.shtml) (van der Tak et al. [2007, A&A 468, 627](https://www.aanda.org/articles/aa/abs/2007/23/aa6820-06/aa6820-06.html)) to the [Julia](https://julialang.org/) programming language. A Python wrapper is provided using `PyJulia`.
+High-performance and extensible re-implementation of the Fortran 77 code [RADEX](https://personal.sron.nl/~vdtak/radex/index.shtml) (van der Tak et al. [2007, A&A 468, 627](https://www.aanda.org/articles/aa/abs/2007/23/aa6820-06/aa6820-06.html)) in the [Julia](https://julialang.org/) programming language. A Python wrapper is provided using `PyJulia`.
 
 Jadex & RADEX are non-LTE radiative transfer codes for calculating atomic and molecular spectral line intensities. They assume a uniform medium (i.e., single zone) with energy level populations in statistical equillibrium. Optical depth is calculated using an escape probability defined for different cloud geometries (e.g., LVG, uniform sphere, slab).
 
-For cases where the same input parameters and constants are used, results from Jadex should match RADEX to within a tolerance of five significant figures. When using an un-patched copy of RADEX values are expected to match within four significant figures due to higher precision mathematical constants in Jadex.
+For cases where the same input parameters and constants are used, results from Jadex should match RADEX to within a tolerance of five significant figures. When using an un-patched copy of RADEX values are expected to match within four significant figures due to higher precision mathematical constants in Jadex. Jadex has been validated against the RADEX wrapper [SpectralRadex](https://github.com/uclchem/SpectralRadex) for a suite of species and physical conditions (see `test/validation.jl`).
 
 
 ## Package features

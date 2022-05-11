@@ -1,10 +1,10 @@
 # Jadex
 
-[![Docs]()](https://jadex.readthedocs.io)
+[![Docs](https://img.shields.io/badge/Docs-dev-blue?style=flat)](https://autocorr.readthedocs.io/Jadex.jl/)
 [![License](https://img.shields.io/badge/License-GPL-blue?style=flat)](LICENSE)
 [![DOI](https://img.shields.io/badge/DOI-replace-blue?style=flat)](https://doi.org/)
 
-High-performance and extensible re-implementation of the Fortran 77 code [RADEX](https://personal.sron.nl/~vdtak/radex/index.shtml) (van der Tak et al. [2007, A&A 468, 627](https://www.aanda.org/articles/aa/abs/2007/23/aa6820-06/aa6820-06.html)) to the [Julia](https://julialang.org/) programming language. A Python wrapper is provided using `PyJulia`. Distinguishing features of this implementation include:
+High-performance and extensible re-implementation of the Fortran 77 code [RADEX](https://personal.sron.nl/~vdtak/radex/index.shtml) (van der Tak et al. [2007, A&A 468, 627](https://www.aanda.org/articles/aa/abs/2007/23/aa6820-06/aa6820-06.html)) in the [Julia](https://julialang.org/) programming language. A Python wrapper is provided using `PyJulia`. Distinguishing features of this implementation include:
 
   * Improved performance (~180x).
   * Improved convergence rate through Ng-acceleration
@@ -13,7 +13,7 @@ High-performance and extensible re-implementation of the Fortran 77 code [RADEX]
   * Extensible design.
   * Cross-platform: tested on Linux, MacOS, and Windows.
 
-For cases where the same input parameters are used, results from Jadex are expected to match RADEX within five significant figures. These differences arise in-part from the use of higher precision mathematical constants and general numerical instability for levels with very small populations. Jadex has been validated against the RADEX wrapper [SpectralRadex](https://github.com/uclchem/SpectralRadex) for a suite of species and physical conditions (see `tests/validation.jl`).
+For cases where the same input parameters are used, results from Jadex are expected to match RADEX within five significant figures. These differences arise in-part from the use of higher precision mathematical constants and general numerical instability for levels with very small populations. Jadex has been validated against the RADEX wrapper [SpectralRadex](https://github.com/uclchem/SpectralRadex) for a suite of species and physical conditions (see `test/validation.jl`).
 
 
 ## Installation

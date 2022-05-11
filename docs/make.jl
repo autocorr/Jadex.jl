@@ -19,6 +19,7 @@ makedocs(
 # for more information.
 deploydocs(
     repo = "github.com/autocorr/Jadex.jl.git",
+    devbranch = "main",
     target = "build",
     forcepush = true,
 )
