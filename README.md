@@ -1,6 +1,6 @@
 # Jadex
 
-[![Docs](https://img.shields.io/badge/Docs-dev-blue?style=flat)](https://autocorr.readthedocs.io/Jadex.jl/)
+[![Docs](https://img.shields.io/badge/Docs-dev-blue?style=flat)](https://autocorr.github.io/Jadex.jl/)
 [![License](https://img.shields.io/badge/License-GPL-blue?style=flat)](LICENSE)
 [![DOI](https://img.shields.io/badge/DOI-replace-blue?style=flat)](https://doi.org/)
 
