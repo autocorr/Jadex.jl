@@ -51,8 +51,8 @@ function RunDef(
     if bg === nothing  # use CMB blackbody
         bg = blackbody_background(mol)
     end
-    zero_density = Dict{String,F}(c.name => zero(F) for c in mol.colliders)
-    density = merge(zero_density, density)
+    zero_density = Dict(c.name => zero(F) for c in mol.colliders)
+    density = convert(Dict{String, F}, merge(zero_density, density))
     crate, ctot = get_collision_rates(mol, density, F(tkin))
     nreduced = count(<(10tkin/FK), mol.levels.eterm)
     if reduced && nreduced == mol.levels.n
