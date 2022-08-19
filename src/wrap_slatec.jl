@@ -65,7 +65,7 @@ results are stored by modifying the vector `rhs` in-place. The Fortran routines
 in RADEX are called natively and included for verification purposes.
 """
 function call_slatec!(yrate::Matrix{Float64}, rhs::Vector{Float64})
-    @assert size(yrate, dims=1) == size(yrate, dims=2) == length(rhs)
+    @assert size(yrate, 1) == size(yrate, 2) == length(rhs)
     maxlev = length(rhs)
     nplus = maxlev + 1
     indx = 0

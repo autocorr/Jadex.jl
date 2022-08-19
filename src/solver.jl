@@ -611,10 +611,10 @@ function run(sol::Solution, rdfs; min_freq=-Inf, max_freq=Inf)
         # FIXME Check if `rdf` has a different molecule type, if so, then clone
         # a new solution instance so the same parameters are kept.
         solve!(sol, rdf)
-        push!(dfs, get_results(sol, rdf, min_freq=min_freq, max_freq=max_freq))
+        push!(dfs, get_results(sol, rdf; min_freq=min_freq, max_freq=max_freq))
         reset!(sol)
     end
-    vcat(dfs..., cols=:union)
+    vcat(dfs...; cols=:union)
 end
 
 
