@@ -6,7 +6,10 @@ export reset!, solve!, get_results
 using Base.Threads
 using Logging
 using LinearAlgebra
+
 using DataFrames
+using LoopVectorization
+using RecursiveFactorization
 
 using ..Constants: FK, THC, CLIGHT, KBOLTZ
 using ..RunDefinition: RunDef
@@ -144,8 +147,6 @@ function step_radiative!(sol::Solution, rdf::RunDef)
     cddv = rdf.cdmol / rdf.deltav
     xpop = sol.xpop
     τl   = sol.τl
-    # Count optically thick lines
-    nthick = 0
     @inbounds for (i, xnu, m, n, A, tb) in zip(
                 1:t.n, t.xnu, t.iupp, t.ilow, t.aeinst, rdf.bg.totalb)
         xt = xnu^3
@@ -153,7 +154,6 @@ function step_radiative!(sol::Solution, rdf::RunDef)
         # Calculate line optical depth
         pop_factor = xpop[n] * gmn - xpop[m]
         τl[i] = cddv * pop_factor / (FGAUSS * xt / A)
-        if τl[i] > 1e-2; nthick += 1 end
         # Use escape probability approximation for internal intensity.
         # Note that excluding the contribution to the local radiation
         # field is effectively lambda acceleration for a single-zone
@@ -166,7 +166,8 @@ function step_radiative!(sol::Solution, rdf::RunDef)
         yrate[m,n] -= A * gmn * exr
         yrate[n,m] -= A * (β + exr)
     end
-    sol.nthick = nthick
+    # Count optically thick lines
+    sol.nthick = count(>(1e-2), τl)
     sol
 end
 
@@ -184,12 +185,11 @@ function step_collision!(sol::Solution, rdf::RunDef)
     ctot  = rdf.ctot
     # About ~10% faster to loop (j,i) than (i,j) -- `setindex!` more
     # performance sensitive than `getindex`.
-    @inbounds for j = 1:nlev
+    # Note that the diagonal elements of `crate` are zero.
+    @turbo for j = 1:nlev
         yrate[j,j] += ctot[j]
         for i = 1:nlev
-            if i != j
-                yrate[i,j] -= crate[j,i]
-            end
+            yrate[i,j] -= crate[j,i]
         end
     end
     sol
@@ -250,10 +250,10 @@ function solve_rate_eq!(xpop, yrate, rhs)
     # These operations are performed in-place and are equivalent to:
     #   xpop .= yrate \ rhs
     Q = try
-        lu!(yrate, NoPivot())
+        RecursiveFactorization.lu!(yrate, NoPivot())
     catch e
         if isa(e, ZeroPivotException)
-            lu!(yrate)
+            RecursiveFactorization.lu!(yrate)
         else
             rethrow()
         end

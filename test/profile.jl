@@ -33,7 +33,7 @@ function get_first_iter()
 end
 
 
-function get_solved(reduced=false)
+function get_solved(;reduced=false)
     _, _, rdf, sol = get_test_data(reduced=reduced)
     niter, converged = solve!(sol, rdf)
     @info "niter=$niter, converged=$converged"
@@ -41,20 +41,41 @@ function get_solved(reduced=false)
 end
 
 
-function bench_solution(reduced=false)
-    _, _, rdf, _ = get_test_data(reduced=reduced)
+function bench_solve(;reduced=false)
+    _, _, rdf, sol = get_test_data(reduced=reduced)
     @benchmark begin
-        sol = Solution(rdf)
-        solve!(sol, rdf)
-        df = get_results(sol, rdf; freq_max=500)
-    end setup=(rdf=$rdf)
+        solve!($sol, $rdf)
+        reset!($sol)
+    end
 end
 
 
-function profile_solution(reduced=false)
-    mol, _, rdf, sol = get_test_data(reduced=reduced)
+function bench_full_call(;reduced=false)
+    _, _, rdf, sol = get_test_data(reduced=reduced)
+    @benchmark begin
+        solve!($sol, $rdf)
+        df = get_results($sol, $rdf; freq_max=500)
+        reset!($sol)
+    end
+end
+
+
+function profile_solve(;reduced=false)
+    _, _, rdf, sol = get_test_data(reduced=reduced)
     @profile begin
-        for _ in 1:1000
+        for _ in 1:10_000
+            solve!(sol, rdf)
+            reset!(sol)
+        end
+    end
+    Profile.print()
+end
+
+
+function profile_full_call(;reduced=false)
+    _, _, rdf, sol = get_test_data(reduced=reduced)
+    @profile begin
+        for _ in 1:10_000
             solve!(sol, rdf)
             get_results(sol, rdf)
             reset!(sol)
@@ -66,7 +87,11 @@ end
 
 function time_steps()
     _, _, rdf, sol = get_test_data(reduced=false)
-    println(":: Initial iteration.")
+    println(":: Escape probabilities.")
+    print("- βsphere:   "); @time βsphere(1.0)
+    print("- βlvg:      "); @time βlvg(1.0)
+    print("- βslab:     "); @time βslab(1.0)
+    println("\n:: Initial iteration.")
     print("- init_rad:  "); @time Solver.init_radiative!(sol, rdf)
     print("- step_col:  "); @time Solver.step_collision!(sol, rdf)
     print("- solve:     "); @time Solver.solve_rate_eq!(sol)
@@ -92,6 +117,10 @@ end
 
 function check_types()
     mol, _, rdf, sol = get_test_data()
+    # escape probability
+    @code_warntype βsphere(1.0)
+    @code_warntype βlvg(1.0)
+    @code_warntype βslab(1.0)
     # initial iteration
     @code_warntype Solver.init_radiative!(sol, rdf)
     @code_warntype Solver.step_collision!(sol, rdf)

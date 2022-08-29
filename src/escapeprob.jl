@@ -10,7 +10,7 @@ Uniform sphere formula from Osterbrock (Astrophysics of Gaseous Nebulae and
 Active Galactic Nuclei) Appendix 2 with power law approximations for large and
 small optical depth.
 """
-function βsphere(τ::Float64)
+function βsphere(τ)
     τr = τ / 2.0
     if abs(τr) < 0.1
         return 1 - 0.75 * τr + τr^2 / 2.5 - τr^3 / 6 + τr^4 / 17.5
@@ -22,7 +22,6 @@ function βsphere(τ::Float64)
         return 0.75 / τr * (a + b * exp(-τ))
     end
 end
-βsphere(τ::Real) = βsphere(convert(Float64, τ))
 
 
 """
@@ -34,7 +33,7 @@ factor of 2 in order to return 1 for τ=0. See Appendix B equation B-7.
 
 [^DeJong80]: [ADS abstract](https://ui.adsabs.harvard.edu/abs/1980A%26A....91...68D/abstract)
 """
-function βlvg(τ::Float64)
+function βlvg(τ)
     τr = τ / 2.0
     if abs(τr) < 0.01
         return 1.0
@@ -44,7 +43,6 @@ function βlvg(τ::Float64)
         return 2.0 / (4.0τr * √log(τr / √π))
     end
 end
-βlvg(τ::Real) = βlvg(convert(Float64, τ))
 
 
 """
@@ -55,7 +53,7 @@ Dalgarno, and Chu (1975, ApJ 199, 69)[^DeJong75].
 
 [^DeJong75]: [ADS abstract](https://ui.adsabs.harvard.edu/abs/1975ApJ...199...69D/abstract)
 """
-function βslab(τ::Float64)
+function βslab(τ)
     if abs(3τ) < 0.1
         return 1.0 - 1.5 * (τ + τ^2)
     elseif abs(3τ) > 50.0
@@ -64,7 +62,6 @@ function βslab(τ::Float64)
         return (1.0 - exp(-3τ)) / 3τ
     end
 end
-βslab(τ::Real) = βslab(convert(Float64, τ))
 
 
 end  # module
