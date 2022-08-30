@@ -6,6 +6,7 @@ using Jadex.ReadData
 using Jadex.Background
 using Jadex.RunDefinition
 using Jadex.EscapeProbability
+using Jadex.GridRunner
 
 
 const TEST_DATA_DIR = joinpath(@__DIR__, "data")
@@ -223,6 +224,19 @@ end
             @test prettyclose(sol.τl[slice], τl_reused[slice])
             @test prettyclose(sol.tex[slice], tex_reused[slice])
             @test prettyclose(sol.xpop[slice], xpop_reused[slice])
+        end
+
+        @testset "HCO+ grid" begin
+            mol, bg, rdf, sol = get_test_data()
+            solve!(sol, rdf)
+            params = ([1e4, 2e4], [20.0, 25.0], [1e13, 2e13], [1.0, 1.2], [1, 2])
+            tau_cube, tex_cube = rungrid(mol, params...; escprob=rdf.escprob, bg=rdf.bg)
+            ix = (1, 1, 1, 1)
+            @test tau_cube !== nothing
+            @test tau_cube[ix..., 1] ≈ sol.τl[1]
+            @test tau_cube[ix..., 2] ≈ sol.τl[2]
+            @test tex_cube[ix..., 1] ≈ sol.tex[1]
+            @test tex_cube[ix..., 2] ≈ sol.tex[2]
         end
     end
 end

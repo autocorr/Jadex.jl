@@ -1,3 +1,4 @@
+using Base.Threads
 using Profile
 using InteractiveUtils
 
@@ -82,6 +83,27 @@ function profile_full_call(;reduced=false)
         end
     end
     Profile.print()
+end
+
+
+function profile_big_grid()
+    mol, bg, rdf, sol = get_test_data()
+    solve!(sol, rdf)
+    N = 10
+    params = (
+              exp10.(range(3, 5, N)),       # density
+              collect(range(10, 30, N)),    # kinetic temperature
+              exp10.(range(12, 13.5, N)),   # column density
+              collect(range(0.5, 2.0, N)),  # linewidth
+              [1, 2],                       # transitions
+    )
+    println("Number of threads: $(nthreads())")
+    @profile begin
+        rungrid(mol, params...; escprob=rdf.escprob, bg=rdf.bg)
+    end
+    Profile.print()
+    @time rungrid(mol, params...; escprob=rdf.escprob, bg=rdf.bg)
+    return nothing
 end
 
 
