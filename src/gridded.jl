@@ -3,6 +3,7 @@ module GridRunner
 export rungrid
 
 using Base.Threads
+using Interpolations
 
 using ..EscapeProbability
 using ..ReadData: Specie
@@ -34,6 +35,20 @@ function runseq(sol::Solution, rdfs::AbstractVector{RunDef};
 end
 
 
+"""
+    rungrid(mol, density, tkin, cdmol, deltav, transitions; ...)
+
+Generate a grid of τ and Tₑₓ values over the set of physical conditions and
+selected transitions. Most parameters for a `RunDef` run definition can be
+set as keyword arguments (e.g., β, bg). Arguments can be passed as scalars
+or collections. Runs will be executed in parallel if Julia was started
+with multiple threads.
+
+Resulting cubes are indexed with shape `(n, Tₖ, N, δv, j)` for volume density,
+kinetic temperature, column density, linewidth, and transition number. The
+transition index number corresponds to the TRANS value in the LAMDA data file
+or the index number in the output table.
+"""
 function rungrid(mol::Specie,
         density::AbstractVector,
         tkin::AbstractVector,
@@ -64,7 +79,8 @@ function rungrid(mol::Specie,
     tau_cube = zeros(cube_shape)
     tex_cube = zeros(cube_shape)
     # Compute values over cube
-    sols = [Solution(mol, iterpars) for _ in nthreads()]
+    @assert prod(param_shape) > nthreads()
+    sols = [Solution(mol, iterpars) for _ in 1:nthreads()]
     @threads for indices in CartesianIndices(param_shape)
         i_n, i_T, i_N, i_δ = Tuple(indices)
         n = density[i_n]
@@ -89,6 +105,28 @@ end
 function rungrid(mol::Specie, args...; kwargs...)
     args = [arg isa Number ? [arg] : collect(arg) for arg in args]
     rungrid(mol, args...; kwargs...)
+end
+
+
+"""
+    create_interp(A::Matrix, axes; B=<interpolation-type>)
+
+Generate a 5D interpolation object for a given τ or Tₑₓ cube where the last
+dimension indexes the transition number. By default a second order (quadratic)
+interpolation is used with flat extrapolation for out-of-bounds access. The
+axis containing the transition number is not interpolated -- an exactly
+matching value must be given.
+
+Please ensure that the axes passed have a linear step size (nb. use log(n) or
+log(N) axes if using logarithmically spaced values). A gridded interpolation
+object can be created using the `Gridded` interpolation type.
+"""
+function create_interp(A::Matrix, axes; B=BSpline(Quadratic(Flat(OnGrid()))))
+    # `scale` requires that the axes be given as ranges, not vectors
+    axis_ranges = [range(ax[1], ax[end], step=ax[2]-ax[1]) for ax in axes]
+    # Only look-up for transition axis
+    itp = interpolate(axes, A, (B, B, B, B, NoInterp()))
+    scale(itp, axis_ranges)
 end
 
 

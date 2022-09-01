@@ -2,8 +2,10 @@ module RunDefinition
 
 export RunDef, thermal_h2_density
 
+using Base.FastMath: exp_fast
+
 using ..Constants: FK
-using ..ReadData: Specie
+using ..ReadData: Specie, CollisionPartner
 using ..EscapeProbability: βlvg
 using ..Background: BackgroundField, blackbody_background
 
@@ -74,20 +76,23 @@ colliders.
 - `crate::Matrix`: Collision rate matrix (product of density and rate coeff.).
 - `ctot::Vector`: Total collision rate for all transitions to a level.
 """
-function get_collision_rates(mol::Specie, densities::Dict, tkin::Real)
+function get_collision_rates(
+        mol::Specie{F}, densities::Dict, tkin::Real,
+    ) where {F <: AbstractFloat}
     nlev = mol.levels.n
     partner_names = [c.name for c in mol.colliders]
     @assert all(p in partner_names for (p, n) in densities)
-    colliders = Dict(c.name => c for c in mol.colliders)
-    dtype = eltype(colliders[partner_names[1]].rates)
-    crate = zeros(dtype, nlev, nlev)
+    colliders = Dict{String, CollisionPartner{F}}(c.name => c for c in mol.colliders)
+    crate = zeros(F, nlev, nlev)
+    # Compute downward collision rates
     for (name, density) in densities
+        if iszero(density)
+            continue
+        end
         collider = colliders[name]
         rate_temps = collider.temp
         tmin, tmax = extrema(rate_temps)
         rates = collider.rates
-        # Compute downward collision rates.
-        colld = zero(crate)
         # Extrapolate rates to lowest or highest values if the kinetic
         # temperature is beyond the extreme values.
         level_iter = enumerate(zip(collider.lcl, collider.lcu))
@@ -95,48 +100,45 @@ function get_collision_rates(mol::Specie, densities::Dict, tkin::Real)
         if tkin <= tmin
             tkin < tmin && @warn "Kinetic temperature lower than min value \
                                   for rates, $tkin < $tmin, using nearest."
-            for (i, (e_lo, e_hi)) in level_iter
-                colld[e_hi, e_lo] = rates[i, 1]
+            @inbounds for (i, (e_lo, e_hi)) in level_iter
+                crate[e_hi, e_lo] = density * rates[i, 1]
             end
         # Clip to rates at highest temperature.
         elseif tkin >= tmax
             tkin > tmax && @warn "Kinetic temperature greater than max value \
                                   for rates, $tkin > $tmax, using nearest."
-            for (i, (e_lo, e_hi)) in level_iter
-                colld[e_hi, e_lo] = rates[i, end]
+            @inbounds for (i, (e_lo, e_hi)) in level_iter
+                crate[e_hi, e_lo] = density * rates[i, end]
             end
         # Interpolate between adjacent rates at the given temperature.
         else
-            k_lo = findlast(rate_temps .< tkin)
-            k_hi = findfirst(rate_temps .>= tkin)
+            k_hi = findfirst(x -> x >= tkin, rate_temps)
+            k_lo = k_hi - 1
             t_lo = rate_temps[k_lo]
             t_hi = rate_temps[k_hi]
             @assert k_lo !== nothing
             @assert k_hi !== nothing
             slope = (tkin - t_lo) / (t_hi - t_lo)
-            for (i, (e_lo, e_hi)) in level_iter
-                colld[e_hi, e_lo] =
-                    rates[i,k_lo] + slope * (rates[i,k_hi] - rates[i,k_lo])
+            @inbounds for (i, (e_lo, e_hi)) in level_iter
+                colld = rates[i,k_lo] + slope * (rates[i,k_hi] - rates[i,k_lo])
+                crate[e_hi, e_lo] = density * colld
             end
         end
-        @. crate += density * colld
     end
     # Compute upward rates from detailed balance.
     eterm = mol.levels.eterm
     gstat = mol.levels.gstat
-    @inbounds for i_hi = 1:nlev, i_lo = 1:nlev
+    @inbounds for i_hi = 1:nlev, i_lo = 1:i_hi-1
         ΔE = eterm[i_hi] - eterm[i_lo]
+        # Avoid the exponential call and approximate the rate as zero if
+        # the exponent is > 160 because exp(-160) ~ 1e-70
         etr = FK * ΔE / tkin
-        if ΔE > 0
-            # Avoid the exponential call and approximate the rate as zero if
-            # the exponent is > 160 because exp(-160) ~ 1e-70
-            if etr < 160
-                g_hi = gstat[i_hi]
-                g_lo = gstat[i_lo]
-                crate[i_lo, i_hi] = g_hi / g_lo * exp(-etr) * crate[i_hi, i_lo]
-            else
-                crate[i_lo, i_hi] = zero(eltype(crate))
-            end
+        if etr < 160
+            g_hi = gstat[i_hi]
+            g_lo = gstat[i_lo]
+            crate[i_lo, i_hi] = g_hi / g_lo * exp_fast(-etr) * crate[i_hi, i_lo]
+        else
+            crate[i_lo, i_hi] = zero(eltype(crate))
         end
     end
     # Compute total collision rates from all levels to a given level.
