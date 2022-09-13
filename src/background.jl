@@ -22,7 +22,7 @@ using ..ReadData: Specie
 - `totalb`: Total background intensity. Note that because internal radiation
             fields are not implemented, `totalb` should be identical to `backi`.
 """
-struct BackgroundField{F <: AbstractFloat}
+struct BackgroundField{F <: Real}
     trj::Vector{F}
     backi::Vector{F}
     totalb::Vector{F}

@@ -1,7 +1,7 @@
 module Solver
 
 export IterationParams, Solution
-export reset!, solve!, get_results
+export reset!, solve, solve!, get_results
 
 using Logging
 using LinearAlgebra
@@ -40,7 +40,7 @@ end
 IterationParams() = IterationParams(5, 10_000, 4, 4)
 
 
-mutable struct Solution{F <: AbstractFloat}
+mutable struct Solution{F <: Real}
     iter::IterationParams
     niter::Int
     nthick::Int
@@ -53,7 +53,11 @@ mutable struct Solution{F <: AbstractFloat}
     τl::Vector{F}
 end
 
-function Solution(mol::Specie{F}, iter::IterationParams) where {F}
+function Solution(
+        mol::Specie,
+        iter::IterationParams;
+        F::Type{T}=Float64,
+    ) where {T <: Real}
     niter = 0
     nthick = 0
     τsum = zero(F)
@@ -72,8 +76,8 @@ function Solution(mol::Specie{F}, iter::IterationParams) where {F}
     # Default constructor for Solution type
     Solution(iter, niter, nthick, τsum, rhs, yrate, tex, xpop, xpop_, τl)
 end
-Solution(rdf::RunDef, iter::IterationParams) = Solution(rdf.mol, iter)
-Solution(rdf::RunDef) = Solution(rdf, IterationParams())
+Solution(rdf::RunDef, iter::IterationParams; kwargs...) = Solution(rdf.mol, iter; kwargs...)
+Solution(rdf::RunDef; kwargs...) = Solution(rdf, IterationParams(); kwargs...)
 
 
 function clear_rates!(yrate)

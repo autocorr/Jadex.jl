@@ -1,8 +1,10 @@
 module GridRunner
 
-export rungrid
+export runseq, rungrid, get_interp, interp_errors
 
 using Base.Threads
+using Distributed
+using DataFrames
 using Interpolations
 
 using ..EscapeProbability
@@ -12,26 +14,50 @@ using ..RunDefinition
 using ..Solver
 
 
-function runseq(sol::Solution, rdfs::AbstractVector{RunDef};
-        min_freq=-Inf, max_freq=Inf)
-    error("Not implemented.")
-    # FIXME
-    # - add multi-threading
-    # NOTE
-    # - solutions are `Specie` dependent, so have to be careful when multiple
-    #   molecules are run from the same list. This should be caught by
-    #   `validate`, so hopefully will avoid a bounds error, but still needs to
-    #   be handled carefully. Should not expose this interface as the primary
-    #   one for this reason.
+function draw_from_axes(axes)
+    N = length(axes)
+    draws = Array{Float64}(undef, N)
+    for i in eachindex(axes)
+        vmin, vmax = extrema(axes[i])
+        draws[i] = vmin + (vmax - vmin) * rand()
+    end
+    draws
+end
+
+
+"""
+    runseq(sol, rdfs; ...)
+
+Execute a series model definitions. All `RunDef` run definitions should be
+for the same `Specie` type (i.e., LAMDA file).
+"""
+function runseq(sol::Solution, rdfs::AbstractVector{<:RunDef};
+        freq_min=-Inf, freq_max=Inf)
+    @assert length(rdfs) >= nthreads()
+    mol_name = rdfs[1].mol.name
+    sols = [deepcopy(sol) for _ in 1:nthreads()]
     dfs = DataFrame[]
-    for rdf in rdfs
-        # FIXME Check if `rdf` has a different molecule type, if so, then clone
-        # a new solution instance so the same parameters are kept.
-        solve!(sol, rdf)
-        push!(dfs, get_results(sol, rdf; min_freq=min_freq, max_freq=max_freq))
-        reset!(sol)
+    lk = ReentrantLock()
+    @threads for i in eachindex(rdfs)
+        rdf = rdfs[i]
+        sol_t = sols[threadid()]
+        # Ensure that all `RunDef`s are for the same `Specie`, and thus
+        # have `Solution` instances with consistent array dimensions.
+        @assert rdf.mol.name == mol_name
+        solve!(sol_t, rdf)
+        df = get_results(sol_t, rdf; freq_min=freq_min, freq_max=freq_max)
+        # Ensure that there is not a data race in appending the results.
+        lock(lk) do
+            push!(dfs, df)
+        end
+        reset!(sol_t)
     end
     vcat(dfs...; cols=:union)
+end
+
+function runseq(rdfs::AbstractVector{<:RunDef}; kwargs...)
+    sol = Solution(rdfs[1])
+    runseq(sol, rdfs; kwargs...)
 end
 
 
@@ -79,7 +105,7 @@ function rungrid(mol::Specie,
     tau_cube = zeros(cube_shape)
     tex_cube = zeros(cube_shape)
     # Compute values over cube
-    @assert prod(param_shape) > nthreads()
+    @assert prod(param_shape) >= nthreads()
     sols = [Solution(mol, iterpars) for _ in 1:nthreads()]
     @threads for indices in CartesianIndices(param_shape)
         i_n, i_T, i_N, i_δ = Tuple(indices)
@@ -93,9 +119,9 @@ function rungrid(mol::Specie,
                      tolerance=tolerance)
         sol = sols[threadid()]
         solve!(sol, rdf)
-        for j in transitions
-            tau_cube[i_n, i_T, i_N, i_δ, j] = sol.τl[j]
-            tex_cube[i_n, i_T, i_N, i_δ, j] = sol.tex[j]
+        for (i, j) in enumerate(transitions)
+            tau_cube[i_n, i_T, i_N, i_δ, i] = sol.τl[j]
+            tex_cube[i_n, i_T, i_N, i_δ, i] = sol.tex[j]
         end
         reset!(sol)
     end
@@ -106,10 +132,11 @@ function rungrid(mol::Specie, args...; kwargs...)
     args = [arg isa Number ? [arg] : collect(arg) for arg in args]
     rungrid(mol, args...; kwargs...)
 end
+rungrid(mol::Specie, args; kwargs...) = rungrid(mol, args...; kwargs...)
 
 
 """
-    create_interp(A::Matrix, axes; B=<interpolation-type>)
+    get_interp(A::Matrix, axes; B=<interpolation-type>)
 
 Generate a 5D interpolation object for a given τ or Tₑₓ cube where the last
 dimension indexes the transition number. By default a second order (quadratic)
@@ -121,12 +148,56 @@ Please ensure that the axes passed have a linear step size (nb. use log(n) or
 log(N) axes if using logarithmically spaced values). A gridded interpolation
 object can be created using the `Gridded` interpolation type.
 """
-function create_interp(A::Matrix, axes; B=BSpline(Quadratic(Flat(OnGrid()))))
+function get_interp(A::AbstractArray{<:Real}, axes;
+        B=BSpline(Quadratic(Line(OnGrid()))))
     # `scale` requires that the axes be given as ranges, not vectors
-    axis_ranges = [range(ax[1], ax[end], step=ax[2]-ax[1]) for ax in axes]
+    axis_ranges = [
+            range(start=ax[1], stop=ax[end], length=length(ax))
+            for ax in axes[1:end-1]
+    ]
+    push!(axis_ranges, UnitRange(1, length(axes[end])))
     # Only look-up for transition axis
-    itp = interpolate(axes, A, (B, B, B, B, NoInterp()))
-    scale(itp, axis_ranges)
+    interp_types = (repeat([B], length(axes)-1)..., NoInterp())
+    itp = interpolate(A, interp_types)
+    scale(itp, axis_ranges...)
+end
+
+
+"""
+Compare the interpolation to a uniform random sample and return an array
+of the deviations.
+
+Note that this implementation currently only works for 5 parameter grids
+of (n, Tₖ, N, Δv, j) and where `n` is the volume density of the specified
+collision partner.
+"""
+function interp_errors(itp, axes, mol, trans;
+        property=:τl, inlog=nothing, nsamples=10_000, collision_partner="h2",
+        kwargs...)
+    # FIXME `trans` refers to different values in `itp` and index in the property.
+    param_axes = axes[1:end-1]
+    transitions = axes[end]
+    trans_index = findfirst(==(trans), transitions)
+    nparams = length(param_axes)
+    log_by_val = inlog === nothing ? repeat([false], nparams) : inlog
+    deviations = Float64[]
+    lk = ReentrantLock()
+    @threads for _ in 1:nsamples
+        params = draw_from_axes(param_axes)
+        interp_v = itp(params..., trans_index)
+        # Compute precise value of grid point
+        lin_params = [l ? exp10(p) : p for (l, p) in zip(log_by_val, params)]
+        density = Dict(collision_partner => lin_params[1])
+        rdf = RunDef(mol; density=density, tkin=lin_params[2], cdmol=lin_params[3],
+                     deltav=lin_params[4], kwargs...)
+        _, sol = solve(rdf)
+        true_v = getproperty(sol, property)[trans]
+        rel_diff = abs(true_v - interp_v) / true_v
+        lock(lk) do
+            push!(deviations, rel_diff)
+        end
+    end
+    deviations
 end
 
 

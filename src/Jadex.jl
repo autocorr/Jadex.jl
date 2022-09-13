@@ -4,8 +4,8 @@ export βsphere, βlvg, βslab
 export Specie
 export BackgroundField, blackbody_background, galactic_isrf
 export RunDef, thermal_h2_density
-export Solution, reset!, solve!, get_results
-export rungrid
+export Solution, reset!, solve, solve!, get_results
+export runseq, rungrid, get_interp, interp_errors
 
 include("constants.jl")
 include("wrap_slatec.jl")

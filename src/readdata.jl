@@ -11,7 +11,7 @@ using DataFrames
 const VALID_PARTNERS = ["h2", "p-h2", "o-h2", "e-", "h", "he", "h+"]
 
 
-struct EnergyLevels{F <: AbstractFloat}
+struct EnergyLevels{F <: Real}
     n::Int                    # number of energy levels
     eterm::Vector{F}          # energy levels, in cm^-1
     gstat::Vector{F}          # statistical weights
@@ -19,7 +19,7 @@ struct EnergyLevels{F <: AbstractFloat}
 end
 
 
-struct Transitions{F <: AbstractFloat}
+struct Transitions{F <: Real}
     n::Int                    # number of radiative transitions
     iupp::Vector{Int}         # upper state
     ilow::Vector{Int}         # lower state
@@ -30,7 +30,7 @@ struct Transitions{F <: AbstractFloat}
 end
 
 
-struct CollisionPartner{F <: AbstractFloat}
+struct CollisionPartner{F <: Real}
     name::String              # collision partner reference
     ntran::Int                # number of collisional transitions
     ntemp::Int                # number of collisional temperatures
@@ -41,7 +41,7 @@ struct CollisionPartner{F <: AbstractFloat}
 end
 
 
-struct Specie{F <: AbstractFloat}
+struct Specie{F <: Real}
     name::String
     amass::F                  # specie weight
     levels::EnergyLevels{F}

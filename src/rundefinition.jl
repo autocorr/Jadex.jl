@@ -10,7 +10,7 @@ using ..EscapeProbability: βlvg
 using ..Background: BackgroundField, blackbody_background
 
 
-struct RunDef{F <: AbstractFloat, B <: Function}
+struct RunDef{F <: Real, B <: Function}
     mol::Specie{F}          # molecule container
     density::Dict{String, F}  # collision partner number densities, cm^-3
     totdens::F                # total number density of all partners, cm^-3
@@ -38,7 +38,7 @@ function RunDef(
         reduced::Bool=false,
         minpop=1e-20,
         tolerance=1e-6,
-    ) where {F <: AbstractFloat}
+    ) where {F <: Real}
     partner_names = [c.name for c in mol.colliders]
     @assert length(density) > 0
     @assert all(p in partner_names for (p, n) in density)
@@ -78,7 +78,7 @@ colliders.
 """
 function get_collision_rates(
         mol::Specie{F}, densities::Dict, tkin::Real,
-    ) where {F <: AbstractFloat}
+    ) where {F <: Real}
     nlev = mol.levels.n
     partner_names = [c.name for c in mol.colliders]
     @assert all(p in partner_names for (p, n) in densities)
