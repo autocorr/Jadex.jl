@@ -3,7 +3,6 @@ module GridRunner
 export runseq, rungrid, get_interp, interp_errors
 
 using Base.Threads
-using Distributed
 using DataFrames
 using Interpolations
 
