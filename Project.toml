@@ -15,6 +15,7 @@ RecursiveFactorization = "f2c3362d-daeb-58d1-803e-2bc74f2840b4"
 [compat]
 CSV = "0.10"
 DataFrames = "1"
+RecursiveFactorization = "0.2"
 julia = "1.7"
 
 [extras]
