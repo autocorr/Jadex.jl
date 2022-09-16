@@ -235,9 +235,13 @@ end
             # LoopVectorization will warn on `BigFloat` that certain
             # optimizations are unavailable.
             @test_logs (:warn,) match_mode=:any solve!(sol_big, rdf)
-            @test maxabsdiff(sol_f64.τl, sol_big.τl) < 1
-            @test maxabsdiff(sol_f64.tex, sol_big.tex) < 1
-            @test maxabsdiff(sol_f64.xpop, sol_big.xpop) < 1
+            # The last values are numerically unstable and produce
+            # hardware dependent outputs.
+            slice = 1:10
+            ϵ = √eps()
+            @test maxabsdiff(sol_f64.τl[slice], sol_big.τl[slice]) < ϵ
+            @test maxabsdiff(sol_f64.tex[slice], sol_big.tex[slice]) < ϵ
+            @test maxabsdiff(sol_f64.xpop[slice], sol_big.xpop[slice]) < ϵ
         end
 
         @testset "HCO+ grid" begin
