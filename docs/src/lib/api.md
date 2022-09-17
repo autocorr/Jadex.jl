@@ -18,6 +18,7 @@ Modules = [
         Jadex.Background,
         Jadex.RunDefinition,
         Jadex.Solver,
+        Jadex.GridRunner,
 ]
 Order   = [:module, :function, :type]
 ```

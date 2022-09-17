@@ -1,9 +1,8 @@
 module Solver
 
-export Solution
-export reset!, solve!, get_results
+export IterationParams, Solution
+export reset!, solve, solve!, get_results
 
-using Base.Threads
 using Logging
 using LinearAlgebra
 
@@ -12,6 +11,7 @@ using LoopVectorization
 using RecursiveFactorization
 
 using ..Constants: FK, THC, CLIGHT, KBOLTZ
+using ..ReadData: Specie
 using ..RunDefinition: RunDef
 
 
@@ -40,7 +40,7 @@ end
 IterationParams() = IterationParams(5, 10_000, 4, 4)
 
 
-mutable struct Solution{F <: AbstractFloat}
+mutable struct Solution{F <: Real}
     iter::IterationParams
     niter::Int
     nthick::Int
@@ -53,11 +53,14 @@ mutable struct Solution{F <: AbstractFloat}
     τl::Vector{F}
 end
 
-function Solution(rdf::RunDef{F,B}, iter::IterationParams) where {F, B}
+function Solution(
+        mol::Specie,
+        iter::IterationParams;
+        F::Type{T}=Float64,
+    ) where {T <: Real}
     niter = 0
     nthick = 0
     τsum = zero(F)
-    mol = rdf.mol
     nlev = mol.levels.n
     ntran = mol.transitions.n
     # Initialize Y rate matrix and right-hand-side vector
@@ -73,7 +76,8 @@ function Solution(rdf::RunDef{F,B}, iter::IterationParams) where {F, B}
     # Default constructor for Solution type
     Solution(iter, niter, nthick, τsum, rhs, yrate, tex, xpop, xpop_, τl)
 end
-Solution(rdf::RunDef) = Solution(rdf, IterationParams())
+Solution(rdf::RunDef, iter::IterationParams; kwargs...) = Solution(rdf.mol, iter; kwargs...)
+Solution(rdf::RunDef; kwargs...) = Solution(rdf, IterationParams(); kwargs...)
 
 
 function clear_rates!(yrate)
@@ -97,9 +101,9 @@ function reset!(sol::Solution; keep_result=false)
 end
 
 
-function validate(sol::Solution, rdf::RunDef)
-    nlev = rdf.mol.levels.n
-    ntran = rdf.mol.transitions.n
+function validate(sol::Solution, mol::Specie)
+    nlev = mol.levels.n
+    ntran = mol.transitions.n
     @assert length(sol.τl) == ntran
     @assert length(sol.tex) == ntran
     @assert length(sol.rhs) == nlev
@@ -108,6 +112,7 @@ function validate(sol::Solution, rdf::RunDef)
     @assert size(sol.yrate) == (nlev, nlev)
     return nothing
 end
+validate(sol::Solution, rdf::RunDef) = validate(sol, rdf.mol)
 
 
 """
@@ -595,27 +600,6 @@ function get_results(sol::Solution, rdf::RunDef; freq_min=-Inf,
      )
 end
 get_results(rdf::RunDef; kwargs...) = get_results(solve(rdf)[2], rdf; kwargs...)
-
-
-function run(sol::Solution, rdfs; min_freq=-Inf, max_freq=Inf)
-    # FIXME
-    # - add multi-threading
-    # NOTE
-    # - solutions are `Specie` dependent, so have to be careful when multiple
-    #   molecules are run from the same list. This should be caught by
-    #   `validate`, so hopefully will avoid a bounds error, but still needs to
-    #   be handled carefully. Should not expose this interface as the primary
-    #   one for this reason.
-    dfs = DataFrame[]
-    for rdf in rdfs
-        # FIXME Check if `rdf` has a different molecule type, if so, then clone
-        # a new solution instance so the same parameters are kept.
-        solve!(sol, rdf)
-        push!(dfs, get_results(sol, rdf; min_freq=min_freq, max_freq=max_freq))
-        reset!(sol)
-    end
-    vcat(dfs...; cols=:union)
-end
 
 
 end  # module

@@ -13,13 +13,14 @@ For cases where the same input parameters and constants are used, results from J
 
 ## Package features
 
-* Improved performance (~180x).
+* Improved performance (~110x).
 * Improved convergence rate through Ng-acceleration
 * User definable escape probability and background radiation field.
-* Test and validation suite.
-* Extensible design.
+* Multi-threaded parameter grid calculations with interpolation.
 * Cross-platform: tested on Linux, MacOS, and Windows.
 * Python interface provided using PyJulia.
+* Test and validation suite.
+* Extensible design.
 
 
 ## Installing

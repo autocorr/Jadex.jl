@@ -6,6 +6,7 @@ using Jadex.ReadData
 using Jadex.Background
 using Jadex.RunDefinition
 using Jadex.EscapeProbability
+using Jadex.GridRunner
 
 
 const TEST_DATA_DIR = joinpath(@__DIR__, "data")
@@ -13,6 +14,7 @@ const TEST_DATA_DIR = joinpath(@__DIR__, "data")
 Logging.disable_logging(Logging.Info)
 
 prettyclose(x, y) = isapprox(x, y, rtol=1e-5)
+maxabsdiff(x, y) = maximum(@. abs(x - y) / y)
 
 
 """
@@ -223,6 +225,71 @@ end
             @test prettyclose(sol.τl[slice], τl_reused[slice])
             @test prettyclose(sol.tex[slice], tex_reused[slice])
             @test prettyclose(sol.xpop[slice], xpop_reused[slice])
+        end
+
+        @testset "HCO+ BigFloat" begin
+            mol, bg, rdf, _ = get_test_data()
+            sol_f64 = Solution(rdf, F=Float64)
+            sol_big = Solution(rdf, F=BigFloat)
+            solve!(sol_f64, rdf)
+            # LoopVectorization will warn on `BigFloat` that certain
+            # optimizations are unavailable.
+            @test_logs (:warn,) match_mode=:any solve!(sol_big, rdf)
+            # The last values are numerically unstable and produce
+            # hardware dependent outputs.
+            slice = 1:10
+            ϵ = √eps()
+            @test maxabsdiff(sol_f64.τl[slice], sol_big.τl[slice]) < ϵ
+            @test maxabsdiff(sol_f64.tex[slice], sol_big.tex[slice]) < ϵ
+            @test maxabsdiff(sol_f64.xpop[slice], sol_big.xpop[slice]) < ϵ
+        end
+
+        @testset "HCO+ grid" begin
+            mol, bg, rdf, sol = get_test_data()
+            solve!(sol, rdf)
+            df = get_results(sol, rdf; freq_max=100)  # select only (1-0)
+            # Test running a sequence of definitions
+            rdfs = [deepcopy(rdf) for _ in 1:40]
+            dfs = runseq(rdfs; freq_max=100)
+            @test dfs !== nothing
+            @test all(dfs[!, :tau] .≈ df[1, :tau])
+            # Test running a grid
+            params = (
+                    repeat([1e4], 3),   # density
+                    repeat([20.0], 3),  # tkin
+                    repeat([1e13], 3),  # cdmol
+                    repeat([1.0], 2),   # linewidth
+                    [1, 2],             # transitions
+            )
+            tau_cube, tex_cube = rungrid(mol, params...; escprob=rdf.escprob, bg=rdf.bg)
+            @test tau_cube !== nothing
+            @test all(tau_cube[:,:,:,:,1] .== sol.τl[1])
+            @test all(tau_cube[:,:,:,:,2] .== sol.τl[2])
+            @test all(tex_cube[:,:,:,:,1] .== sol.tex[1])
+            @test all(tex_cube[:,:,:,:,2] .== sol.tex[2])
+        end
+
+        @testset "HCO+ interpolation" begin
+            mol, bg, rdf, sol = get_test_data()
+            # Create grid
+            params = (
+                    [1e4, 2e4, 3e4],     # density
+                    [20.0, 21.0, 22.0],  # tkin
+                    [1e13, 2e13, 3e13],  # cdmol
+                    [1.0, 1.1, 1.2],     # linewidth
+                    [1, 2],              # transitions
+            )
+            tau_cube, tex_cube = rungrid(mol, params...; escprob=rdf.escprob, bg=rdf.bg)
+            itp = get_interp(tau_cube, params)
+            τ_approx = itp(2.5e4, 21.5, 2.5e13, 1.15, 1)
+            # Get exact value
+            τ_exact = solve(rdf)[2].τl[1]
+            @test isapprox(τ_approx, τ_exact, rtol=1e-2)
+            # Check errors over cube
+            τ_dev = interp_errors(itp, params, mol, 1; nsamples=50,
+                                  escprob=rdf.escprob, bg=rdf.bg)
+            @test τ_dev !== nothing
+            @test maximum(τ_dev) < 0.1
         end
     end
 end

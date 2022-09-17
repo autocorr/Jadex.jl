@@ -1,3 +1,4 @@
+using Base.Threads
 using Profile
 using InteractiveUtils
 
@@ -5,6 +6,7 @@ using BenchmarkTools
 
 using Jadex
 using Jadex.Solver
+using Jadex.RunDefinition: get_collision_rates
 
 
 function get_test_data(;reduced=false)
@@ -41,6 +43,14 @@ function get_solved(;reduced=false)
 end
 
 
+function bench_collision_rates()
+    mol, _, rdf, _ = get_test_data()
+    density = Dict("h2" => 1e4)
+    tkin = 20.0
+    @benchmark get_collision_rates($mol, $density, $tkin)
+end
+
+
 function bench_solve(;reduced=false)
     _, _, rdf, sol = get_test_data(reduced=reduced)
     @benchmark begin
@@ -57,6 +67,19 @@ function bench_full_call(;reduced=false)
         df = get_results($sol, $rdf; freq_max=500)
         reset!($sol)
     end
+end
+
+
+function profile_collision_rates()
+    mol, _, rdf, _ = get_test_data()
+    density = Dict("h2" => 1e4)
+    tkin = 20.0
+    @profile begin
+        for _ in 1:100_000
+            get_collision_rates(mol, density, tkin)
+        end
+    end
+    Profile.print()
 end
 
 
@@ -82,6 +105,27 @@ function profile_full_call(;reduced=false)
         end
     end
     Profile.print()
+end
+
+
+function profile_big_grid()
+    mol, bg, rdf, sol = get_test_data()
+    solve!(sol, rdf)
+    N = 10
+    params = (
+              exp10.(range(3, 5, N)),       # density
+              collect(range(10, 30, N)),    # kinetic temperature
+              exp10.(range(12, 13.5, N)),   # column density
+              collect(range(0.5, 2.0, N)),  # linewidth
+              [1, 2],                       # transitions
+    )
+    println("Number of threads: $(nthreads())")
+    @profile begin
+        rungrid(mol, params...; escprob=rdf.escprob, bg=rdf.bg)
+    end
+    Profile.print()
+    @time rungrid(mol, params...; escprob=rdf.escprob, bg=rdf.bg)
+    return nothing
 end
 
 
@@ -117,6 +161,8 @@ end
 
 function check_types()
     mol, _, rdf, sol = get_test_data()
+    # collision rates
+    @code_warntype get_collision_rates(mol, rdf.density, rdf.tkin)
     # escape probability
     @code_warntype βsphere(1.0)
     @code_warntype βlvg(1.0)

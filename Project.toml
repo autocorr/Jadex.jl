@@ -1,11 +1,12 @@
 name = "Jadex"
 uuid = "302b6ea9-03d1-47d0-b3e6-7bc5ec1c11d5"
 authors = ["Brian Svoboda <brian.e.svoboda@gmail.com> and contributors"]
-version = "0.2.1"
+version = "0.3.0"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
@@ -15,6 +16,8 @@ RecursiveFactorization = "f2c3362d-daeb-58d1-803e-2bc74f2840b4"
 CSV = "0.10"
 DataFrames = "1"
 LoopVectorization = "0.12"
+Interpolations = "0.14"
+RecursiveFactorization = "0.2"
 julia = "1.7"
 
 [extras]
