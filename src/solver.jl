@@ -292,7 +292,7 @@ function solve_rate_eq_reduced!(xpop, yrate, nr)
     # Create reduced matrix and add normalized contributions from outside
     # levels.
     Yr = Y[1:nr+1,1:nr+1]  # slicing copies
-    @inbounds for j = 1:nr, i = 1:nr, k = nr+1:nlev
+    @turbo for j = 1:nr, i = 1:nr, k = nr+1:nlev
         Yr[i,j] += abs(Y[k,j] * Y[i,k] / Y[k,k])
     end
     # Allocate or create views for reduced RHS and level populations.
@@ -305,7 +305,7 @@ function solve_rate_eq_reduced!(xpop, yrate, nr)
     # Compute cascade for higher excitation lines. This is not accessed
     # efficiently, but it appears fixed by the problem (total population
     # from all higher states to a given lower state).
-    @inbounds for k = nr+1:nlev
+    @turbo for k = nr+1:nlev
         xtot = zero(dtype)
         for j = 1:nr
             xtot += xpop[j] * Y[k,j]
@@ -521,14 +521,13 @@ fills the beam (i.e., a beam filling fraction of 1).
 T_R = \frac{c^2}{2 k \nu^2} \left( I^\mathrm{em}_\nu - I^\mathrm{bg}_\nu \right)
 ```
 """
-function calc_radiation_temperature(
-        xnu::F, tex::F, τl::F, intens_bg::F) where F <: Real
+function calc_radiation_temperature(xnu, tex, τl, intens_bg)
     # Black-body intensity in temperature units at the given excitation
     # temperature.
     bnutex = THC * xnu^3 * (inv ∘ expm1)(FK * xnu / tex)
     # Emergent intensity
     ftau = exp(-τl)
-    intens_em = intens_bg * ftau + bnutex * (F(1) - ftau)
+    intens_em = intens_bg * ftau + bnutex * (one(ftau) - ftau)
     # Calculate radiation temperature
     t_rad = FK / (THC * xnu * xnu) * (intens_em - intens_bg)
     t_rad

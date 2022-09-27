@@ -119,7 +119,7 @@ function profile_big_grid()
               collect(range(0.5, 2.0, N)),  # linewidth
               [1, 2],                       # transitions
     )
-    println("Number of threads: $(nthreads())")
+    @info "Number of threads: $(nthreads())"
     @profile begin
         rungrid(mol, params...; escprob=rdf.escprob, bg=rdf.bg)
     end

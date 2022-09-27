@@ -21,6 +21,7 @@ end
 
 struct Transitions{F <: Real}
     n::Int                    # number of radiative transitions
+    id::Vector{Int}           # transition ID
     iupp::Vector{Int}         # upper state
     ilow::Vector{Int}         # lower state
     aeinst::Vector{F}         # Einstein A
@@ -151,13 +152,15 @@ function parse_transitions(lines, levels::EnergyLevels)
     work_lines = strip_trailing_fields.(work_lines, 6)
     types = [Int, Int, Int, Float64, Float64, Float64]
     df = parse_table(work_lines, types)
+    sort!(df, :Column6)  # E_up, low to high
+    id = df.Column1
     iupp = df.Column2
     ilow = df.Column3
     aeinst = df.Column4
     spfreq = df.Column5
     eup = df.Column6
     xnu = levels.eterm[iupp] .- levels.eterm[ilow]
-    Transitions(ntran, iupp, ilow, aeinst, spfreq, eup, xnu)
+    Transitions(ntran, id, iupp, ilow, aeinst, spfreq, eup, xnu)
 end
 
 

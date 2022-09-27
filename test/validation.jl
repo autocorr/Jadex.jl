@@ -29,7 +29,7 @@ const RADEX_COLLIDERS = Dict(
 const ZERO_DENSITY = Dict(c => 0.0 for c in keys(RADEX_COLLIDERS))
 
 
-function get_radex_results(name, tkin, density, cdmol, linewidth=1.0, fmin=0.0,
+function get_radex_results(name, tkin, density, cdmol, linewidth=1.0; fmin=0.0,
             fmax=1e9, geometry=1)
     @assert in(geometry, [1,2,3])
     molfile = joinpath(DATADIR, "$name.dat")
