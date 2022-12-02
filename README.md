@@ -27,7 +27,7 @@ For validation purposes, optional compilation instructions are included in `src/
 
 
 ## Documentation
-Please refer to the online https://jadex.readthedocs.io for the [Quickstart]() guide, [User Manual](), and [API]() reference. The documentation source files are also supplied in the `docs/` folder distributed with Jadex.
+Please refer to the online https://autocorr.github.io/Jadex.jl for the [Quickstart](https://autocorr.github.io/Jadex.jl/dev/#Quickstart-guide) guide, [User Guide](https://autocorr.github.io/Jadex.jl/dev/userguide/), and [API](https://autocorr.github.io/Jadex.jl/dev/lib/api/) reference. The documentation source files are also supplied in the `docs/` folder distributed with Jadex.
 
 
 ## Citing this work
