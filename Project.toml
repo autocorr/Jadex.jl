@@ -1,7 +1,7 @@
 name = "Jadex"
 uuid = "302b6ea9-03d1-47d0-b3e6-7bc5ec1c11d5"
 authors = ["Brian Svoboda <brian.e.svoboda@gmail.com> and contributors"]
-version = "0.3.1"
+version = "0.3.2"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -17,7 +17,7 @@ CSV = "0.10"
 DataFrames = "1"
 Interpolations = "0.14"
 LoopVectorization = "0.12"
-RecursiveFactorization = "0.2"
+RecursiveFactorization = "0.2.14"
 julia = "1.7"
 
 [extras]
