@@ -23,4 +23,6 @@ using .RunDefinition
 using .EscapeProbability
 using .GridRunner
 
+include("precompile.jl")
+
 end

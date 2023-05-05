@@ -10,7 +10,7 @@ using Jadex.RunDefinition: get_collision_rates
 
 
 function get_test_data(;reduced=false)
-    datadir = joinpath(@__DIR__, "data")
+    datadir = joinpath(pkgdir(Jadex), "test", "data")
     mol = Specie("hco+", datadir=datadir)
     bg  = blackbody_background(mol, tbg=2.730)
     rdf = RunDef(mol, density=Dict("h2" => 1e4), tkin=20.0, cdmol=1e13,

@@ -1,6 +1,7 @@
 using Test
 using Logging
 
+using Jadex
 using Jadex.Solver
 using Jadex.ReadData
 using Jadex.Background
@@ -9,7 +10,7 @@ using Jadex.EscapeProbability
 using Jadex.GridRunner
 
 
-const TEST_DATA_DIR = joinpath(@__DIR__, "data")
+const TEST_DATA_DIR = joinpath(pkgdir(Jadex), "test", "data")
 
 Logging.disable_logging(Logging.Info)
 
