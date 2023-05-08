@@ -18,6 +18,7 @@ CSV = "0.10"
 DataFrames = "1"
 Interpolations = "0.14"
 LoopVectorization = "0.12"
+PrecompileTools = "1.1"
 RecursiveFactorization = "=0.2.14"
 julia = "1.7"
 
